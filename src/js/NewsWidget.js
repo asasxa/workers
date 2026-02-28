@@ -7,10 +7,12 @@ export default class NewsWidget {
     this.container = container;
     this.newsList = null;
     this.updateBtn = null;
+    this.isOnline = navigator.onLine;
   }
 
   init() {
     this.bindToDOM();
+    this.bindNetworkEvents();
     this.createRequest();
   }
 
@@ -20,18 +22,58 @@ export default class NewsWidget {
     this.updateBtn = this.container.querySelector('.header__btn');
 
     this.updateBtn.addEventListener('click', () => this.createRequest());
+
+    this.updateOnlineStatus();
+  }
+
+  bindNetworkEvents() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.updateOnlineStatus();
+      this.createRequest();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.updateOnlineStatus();
+    });
+  }
+
+  updateOnlineStatus() {
+    if (this.isOnline) {
+      this.container.classList.remove('offline');
+    } else {
+      this.container.classList.add('offline');
+    }
   }
 
   async createRequest() {
+    if (!this.isOnline) {
+      this.showOfflineMessage();
+      return;
+    }
+
     this.showAnimation();
     try {
-      const request = await fetch('https://ahj-12-1.sergem.xyz/news');
+      const request = await fetch('https://workers-back-r0r5.onrender.com');
+
+      if (!request.ok) {
+        throw new Error(`HTTP error! status: ${request.status}`);
+      }
+
       const response = await request.json();
       this.hideAnimation();
-      this.showNews(response.data);
+
+      if (response.data && response.data.length > 0) {
+        this.showNews(response.data);
+        this.hideError();
+      } else {
+        this.showError('Нет данных для отображения');
+      }
     } catch (err) {
       console.log('Error: ', err);
-      this.showError();
+      this.hideAnimation();
+      this.showError('Не удалось загрузить данные. Проверьте подключение и обновите страницу.');
     }
   }
 
@@ -40,8 +82,13 @@ export default class NewsWidget {
     <header class="header">
       <h1 class="header__title">Новости мира кино</h1>
       <button class="header__btn">Обновить</button>
+      <span class="network-status"></span>
     </header>
     <div class="news__list"></div>
+    <div class="loading-overlay">
+      <div class="loader"></div>
+      <div class="loading-text">Загрузка новостей...</div>
+    </div>
   </div>`;
   }
 
@@ -59,7 +106,16 @@ export default class NewsWidget {
   </div>`;
   }
 
+  static get offlineMarkUp() {
+    return `<div class="offline-message">
+      <div class="offline-icon">📡</div>
+      <div class="offline-text">Нет подключения к интернету</div>
+      <div class="offline-subtext">Показываем сохранённые данные</div>
+    </div>`;
+  }
+
   showNews(data) {
+    this.newsList.innerHTML = '';
     data.forEach((elem) => {
       this.newsList.insertAdjacentHTML(
         'beforeend',
@@ -69,34 +125,59 @@ export default class NewsWidget {
   }
 
   showAnimation() {
-    this.newsList.innerHTML = '';
-    while (this.newsList.children.length < 3) {
-      this.newsList.insertAdjacentHTML('beforeend', NewsWidget.newsMarkUp());
+    const loader = this.container.querySelector('.loading-overlay');
+    if (loader) {
+      loader.style.display = 'flex';
     }
-    this.newsList.classList.add('anime');
+    this.newsList.style.opacity = '0.5';
   }
 
   hideAnimation() {
-    if (this.newsList.classList.contains('anime')) {
-      this.newsList.querySelectorAll('.news').forEach((elem) => elem.remove());
-      this.newsList.classList.remove('anime');
+    const loader = this.container.querySelector('.loading-overlay');
+    if (loader) {
+      loader.style.display = 'none';
     }
+    this.newsList.style.opacity = '1';
   }
 
-  showError() {
+  showError(message = '') {
+    this.hideAnimation();
+
+    const existingError = this.newsList.querySelector('.error');
+    if (existingError) {
+      existingError.querySelector('.error__mes').textContent = message ||
+        'Не удалось загрузить данные. Проверьте подключение и обновите страницу.';
+      return;
+    }
+
     this.newsList.insertAdjacentHTML(
       'beforeend',
       `<div class="error">
-    <div class="error__mes">
-      Не удалось загрузить данные. Проверьте подключение и обновите страницу.
-    </div>
-  </div>`
+        <div class="error__icon">⚠️</div>
+        <div class="error__mes">${message || 'Не удалось загрузить данные. Проверьте подключение и обновите страницу.'}</div>
+      </div>`
     );
   }
 
+  showOfflineMessage() {
+    this.hideAnimation();
+
+    const existingOffline = this.container.querySelector('.offline-message');
+    if (existingOffline) {
+      return;
+    }
+
+    this.container.insertAdjacentHTML('beforeend', NewsWidget.offlineMarkUp);
+  }
+
   hideError() {
-    if (this.newsList.querySelector('.error')) {
-      this.newsList.querySelector('.error').remove();
+    const error = this.newsList.querySelector('.error');
+    if (error) {
+      error.remove();
+    }
+    const offlineMsg = this.container.querySelector('.offline-message');
+    if (offlineMsg) {
+      offlineMsg.remove();
     }
   }
 }
