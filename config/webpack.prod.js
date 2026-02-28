@@ -3,7 +3,7 @@ const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const { InjectManifest } = require('workbox-webpack-plugin');
 const { merge } = require('webpack-merge');
 
-const paths = require('./paths');
+const paths = require('./paths');  
 const common = require('./webpack.common.js');
 
 module.exports = merge(common, {
@@ -12,7 +12,7 @@ module.exports = merge(common, {
   devtool: false,
   output: {
     path: paths.build,
-    publicPath: './',
+    publicPath: '/',
     filename: 'js/[name].bundle.js',
   },
   module: {
@@ -46,7 +46,7 @@ module.exports = merge(common, {
       chunkFilename: '[id].css',
     }),
     new InjectManifest({
-      swSrc: '../src/sw.js',
+      swSrc: paths.src + '/sw.js',
       swDest: 'sw.js',
       maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
     }),
