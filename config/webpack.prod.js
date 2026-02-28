@@ -3,7 +3,7 @@ const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const { InjectManifest } = require('workbox-webpack-plugin');
 const { merge } = require('webpack-merge');
 
-const paths = require('./paths');  
+const paths = require('./paths');
 const common = require('./webpack.common.js');
 
 module.exports = merge(common, {
